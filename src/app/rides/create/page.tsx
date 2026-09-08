@@ -1,0 +1,238 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import RouteMap, { RouteInfo } from "@/components/RouteMap";
+import { LocationInput, LocationSuggestion } from "@/components/LocationInput";
+import { calculateFare } from "@/lib/fareCalculator";
+
+const SEAT_OPTIONS = [1, 4, 6];
+
+export default function CreateRide() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+
+  // Protect route: redirect non-drivers to dashboard
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else if (status === "authenticated") {
+      const userType = session?.user?.userType;
+      if (userType !== "DRIVER" && userType !== "BOTH") {
+        router.push("/dashboard");
+      }
+    }
+  }, [status, session, router]);
+
+  const [formData, setFormData] = useState({
+    origin: "",
+    destination: "",
+    departure: "",
+    seats: 4,
+    vehicleName: "",
+  });
+
+  // Store resolved coordinates from LocationInput selections
+  const [originLoc, setOriginLoc] = useState<LocationSuggestion | null>(null);
+  const [destLoc, setDestLoc] = useState<LocationSuggestion | null>(null);
+
+  useEffect(() => {
+    if (!(formData.origin.length > 2 && formData.destination.length > 2)) {
+      setRouteInfo(null);
+    }
+  }, [formData.origin, formData.destination]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleOriginChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, origin: value }));
+    setOriginLoc(null);
+  };
+
+  const handleDestChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, destination: value }));
+    setDestLoc(null);
+  };
+
+  const handleOriginSelect = (loc: LocationSuggestion) => {
+    setFormData((prev) => ({ ...prev, origin: loc.name }));
+    setOriginLoc(loc);
+  };
+
+  const handleDestSelect = (loc: LocationSuggestion) => {
+    setFormData((prev) => ({ ...prev, destination: loc.name }));
+    setDestLoc(loc);
+  };
+
+  const handleRouteCalculated = (info: RouteInfo | null) => {
+    setRouteInfo(info);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      // Calculate total ride fare based on route distance
+      const calculatedPrice = routeInfo?.distance
+        ? calculateFare({ rideType: "Personal Cab", routeDistanceMeters: routeInfo.distance }).passengerTotal
+        : 0;
+
+      const res = await fetch("/api/rides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          price: calculatedPrice,
+          distance: routeInfo?.distance,
+          duration: routeInfo?.duration,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to create ride");
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-12">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Publish a Ride</CardTitle>
+          <CardDescription>
+            Offer a seat to other students travelling your route.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && <div className="text-sm text-destructive font-medium">{error}</div>}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="origin">Origin (Starting Location)</Label>
+                <LocationInput
+                  id="origin"
+                  placeholder="e.g. IIIT Pune, Talegaon"
+                  required
+                  value={formData.origin}
+                  onChange={handleOriginChange}
+                  onSelect={handleOriginSelect}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="destination">Destination</Label>
+                <LocationInput
+                  id="destination"
+                  placeholder="e.g. Talegaon Station"
+                  required
+                  value={formData.destination}
+                  onChange={handleDestChange}
+                  onSelect={handleDestSelect}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg overflow-hidden border bg-muted/30">
+              <div className="p-4 border-b bg-card flex justify-between items-center">
+                <h3 className="font-semibold">Route Preview</h3>
+                {routeInfo && (
+                  <div className="text-xs text-muted-foreground font-medium flex gap-4">
+                    <span>{(routeInfo.distance / 1000).toFixed(1)} km</span>
+                    <span>{Math.round(routeInfo.duration / 60)} mins</span>
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
+                {(formData.origin.length > 2 && formData.destination.length > 2) ? (
+                  <RouteMap 
+                    origin={originLoc ?? formData.origin} 
+                    destination={destLoc ?? formData.destination} 
+                    onRouteCalculated={handleRouteCalculated} 
+                  />
+                ) : (
+                  <div className="h-64 w-full flex items-center justify-center text-muted-foreground text-sm border rounded-lg bg-muted">
+                    Enter an origin and destination to preview the route
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="departure">Departure Date &amp; Time</Label>
+              <Input 
+                id="departure" 
+                type="datetime-local" 
+                required 
+                value={formData.departure}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="vehicleName">Car Name</Label>
+                <Input
+                  id="vehicleName"
+                  placeholder="e.g. Swift"
+                  required
+                  value={formData.vehicleName}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Available Seats</Label>
+                <div className="flex gap-3">
+                  {SEAT_OPTIONS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, seats: n }))}
+                      className={`flex-1 py-2 rounded-md border text-sm font-semibold transition-colors ${
+                        formData.seats === n
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-input hover:bg-muted"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Publishing..." : "Publish Ride"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

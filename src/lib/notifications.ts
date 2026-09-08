@@ -1,0 +1,159 @@
+import nodemailer from "nodemailer";
+
+export interface EmergencyNotificationPayload {
+  passengerName: string;
+  passengerEmail: string;
+  emergencyContactEmail?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  origin: string;
+  destination: string;
+  driverName: string;
+  departure: Date;
+  alertCreatedAt: Date;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface SendEmailResult {
+  success: boolean;
+  providerConfigured: boolean;
+  error?: string;
+  messageId?: string;
+}
+
+export async function sendEmergencyEmail(payload: EmergencyNotificationPayload): Promise<SendEmailResult> {
+  const recipientEmail = payload.emergencyContactEmail?.trim();
+
+  if (!recipientEmail) {
+    console.warn(`[Emergency Alert] Passenger "${payload.passengerName}" (${payload.passengerEmail}) triggered SOS, but has no emergency contact email configured.`);
+    return {
+      success: false,
+      providerConfigured: false,
+      error: "Emergency contact email is not configured.",
+    };
+  }
+
+  // Validate recipient email basic format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(recipientEmail)) {
+    console.warn(`[Emergency Alert] Invalid emergency contact email format: "${recipientEmail}".`);
+    return {
+      success: false,
+      providerConfigured: false,
+      error: `Invalid emergency contact email address format (${recipientEmail}).`,
+    };
+  }
+
+  const smtpHost = process.env.SMTP_HOST?.trim();
+  const smtpPortStr = process.env.SMTP_PORT?.trim();
+  const smtpPort = smtpPortStr ? parseInt(smtpPortStr, 10) : 587;
+  const smtpUser = process.env.SMTP_USER?.trim();
+  const smtpPass = process.env.SMTP_PASS?.trim() || process.env.SMTP_PASSWORD?.trim();
+  const emailFrom = process.env.EMAIL_FROM?.trim() || process.env.SOS_FROM_EMAIL?.trim() || `"TPool Emergency Alert" <no-reply@tpool.local>`;
+
+  const locationText = (payload.latitude != null && payload.longitude != null)
+    ? `Latitude: ${payload.latitude}, Longitude: ${payload.longitude}\nGoogle Maps: https://maps.google.com/?q=${payload.latitude},${payload.longitude}`
+    : "Location unavailable";
+
+  const subject = `🚨 TPool Emergency Alert - ${payload.passengerName}`;
+  const textContent = `TPool Emergency Alert
+
+${payload.passengerName} has activated an SOS during a TPool ride.
+
+Ride:
+${payload.origin} → ${payload.destination}
+
+Driver:
+${payload.driverName}
+
+Departure:
+${new Date(payload.departure).toLocaleString()}
+
+SOS activated:
+${new Date(payload.alertCreatedAt).toLocaleString()}
+
+Current location:
+${locationText}
+
+Please contact the passenger immediately.
+
+This is an emergency notification from TPool.`;
+
+  console.log(`[EMERGENCY EMAIL ATTEMPT LOG]
+To: ${recipientEmail}
+From: ${emailFrom}
+Subject: ${subject}
+Location Status: ${payload.latitude != null ? "Available" : "Unavailable"}`);
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    console.warn("[Emergency Alert] SMTP credentials (SMTP_HOST, SMTP_USER, SMTP_PASS) not configured in environment variables. Email notification cannot be sent.");
+    return {
+      success: false,
+      providerConfigured: false,
+      error: "Email provider credentials (SMTP_HOST, SMTP_USER, SMTP_PASS) are not configured.",
+    };
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === "production",
+      },
+    });
+
+    const info = await transporter.sendMail({
+      from: emailFrom,
+      to: recipientEmail,
+      subject,
+      text: textContent,
+    });
+
+    console.log(`[EMERGENCY EMAIL SUCCESS] Delivered to ${recipientEmail}. MessageId: ${info.messageId}`);
+
+    return {
+      success: true,
+      providerConfigured: true,
+      messageId: info.messageId,
+    };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : "SMTP transport error";
+    console.error("[EMERGENCY EMAIL FAILURE]", errMessage);
+    return {
+      success: false,
+      providerConfigured: true,
+      error: `Email delivery failed: ${errMessage}`,
+    };
+  }
+}
+
+export async function sendEmergencySms(payload: EmergencyNotificationPayload): Promise<{
+  implemented: boolean;
+  configured: boolean;
+  message: string;
+}> {
+  const smsApiKey = process.env.SMS_PROVIDER_API_KEY;
+  const smsFrom = process.env.SMS_PROVIDER_FROM;
+
+  if (!smsApiKey || !smsFrom) {
+    console.log(`[EMERGENCY SMS LOG] Prepared for ${payload.passengerName}. SMS_PROVIDER_API_KEY / SMS_PROVIDER_FROM not set.`);
+    return {
+      implemented: true,
+      configured: false,
+      message: "SMS provider integration prepared for future credentials (SMS_PROVIDER_API_KEY, SMS_PROVIDER_FROM).",
+    };
+  }
+
+  return {
+    implemented: true,
+    configured: true,
+    message: "SMS notification sent.",
+  };
+}

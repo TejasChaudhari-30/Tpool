@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum UserType {
+  PASSENGER
+  DRIVER
+  BOTH
+}
+
+enum VerificationDocumentType {
+  STUDENT_ID
+  DRIVING_LICENCE
+  VEHICLE_RC
+}
+
+enum VerificationStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+  REUPLOAD_REQUIRED
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum PassengerGenderPreference {
+  ANY
+  FEMALE
+}
+
+enum RideStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EmergencyAlertStatus {
+  ACTIVE
+  RESOLVED
+  CANCELLED
+}
+
+model User {
+  id                        String             @id @default(cuid())
+  name                      String
+  email                     String             @unique
+  password                  String
+  role                      Role               @default(USER)
+  userType                  UserType           @default(PASSENGER)
+  status                    UserStatus         @default(ACTIVE)
+  gender                    Gender?            @default(PREFER_NOT_TO_SAY)
+  emergencyContactName      String?
+  emergencyContactEmail     String?
+  emergencyContactPhone     String?
+  studentVerificationStatus VerificationStatus @default(NOT_SUBMITTED)
+  driverVerificationStatus  VerificationStatus @default(NOT_SUBMITTED)
+  createdAt                 DateTime           @default(now())
+  rides                     Ride[]             @relation("DriverRides")
+  bookings                  Booking[]
+  messages                  Message[]
+  verifications             Verification[]     @relation("UserVerifications")
+  reviewedVerifications     Verification[]     @relation("AdminVerifications")
+  reportsSubmitted          Report[]           @relation("ReporterUser")
+  reportsReceived           Report[]           @relation("ReportedUser")
+  emergencyAlerts           EmergencyAlert[]
+  ratingsGiven              Rating[]           @relation("RatingsGiven")
+  ratingsReceived           Rating[]           @relation("RatingsReceived")
+}
+
+model Ride {
+  id              String           @id @default(cuid())
+  driverId        String
+  origin          String
+  originLat       Float?
+  originLon       Float?
+  destination     String
+  destLat         Float?
+  destLon         Float?
+  departure       DateTime
+  seats           Int
+  price           Float            @default(0)
+  rideType        String           @default("Personal Cab")
+  vehicleName     String           @default("")
+  distance        Float?
+  duration        Int?
+  status          RideStatus       @default(SCHEDULED)
+  createdAt       DateTime         @default(now())
+  driver          User             @relation("DriverRides", fields: [driverId], references: [id])
+  bookings        Booking[]
+  messages        Message[]
+  reports         Report[]
+  emergencyAlerts EmergencyAlert[]
+  ratings         Rating[]
+}
+
+model Booking {
+  id                      String                    @id @default(cuid())
+  rideId                  String
+  userId                  String
+  seats                   Int                       @default(1)
+  fare                    Float                     @default(0)
+  status                  String                    @default("PENDING") // PENDING, CONFIRMED, CANCELLED, REJECTED
+  preferredPassengerGender PassengerGenderPreference @default(ANY)
+  createdAt               DateTime                  @default(now())
+  ride                    Ride                      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  user                    User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emergencyAlerts         EmergencyAlert[]
+  ratings                 Rating[]
+}
+
+model EmergencyAlert {
+  id          String               @id @default(cuid())
+  userId      String
+  rideId      String
+  bookingId   String
+  status      EmergencyAlertStatus @default(ACTIVE)
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime             @default(now())
+  resolvedAt  DateTime?
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ride        Ride                 @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  booking     Booking              @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Rating {
+  id          String   @id @default(cuid())
+  rideId      String
+  bookingId   String?
+  reviewerId  String
+  revieweeId  String
+  rating      Int
+  review      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ride        Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  reviewer    User     @relation("RatingsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee    User     @relation("RatingsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([rideId, reviewerId, revieweeId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  rideId    String
+  userId    String
+  ride      Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Verification {
+  id              String                   @id @default(cuid())
+  userId          String
+  documentType    VerificationDocumentType
+  filePath        String
+  fileName        String
+  fileType        String
+  status          VerificationStatus       @default(PENDING)
+  rejectionReason String?
+  submittedAt     DateTime                 @default(now())
+  reviewedAt      DateTime?
+  adminId         String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  user            User                     @relation("UserVerifications", fields: [userId], references: [id], onDelete: Cascade)
+  admin           User?                    @relation("AdminVerifications", fields: [adminId], references: [id], onDelete: SetNull)
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  reporterId     String
+  reportedUserId String?
+  rideId         String?
+  reason         String
+  status         ReportStatus @default(PENDING)
+  createdAt      DateTime     @default(now())
+
+  reporter       User         @relation("ReporterUser", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser   User?        @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  ride           Ride?        @relation(fields: [rideId], references: [id], onDelete: SetNull)
+}

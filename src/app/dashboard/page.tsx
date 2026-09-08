@@ -1,0 +1,404 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import SearchForm from "@/components/SearchForm";
+import ManageBooking from "@/components/ManageBooking";
+import CancelBooking from "@/components/CancelBooking";
+import DeleteRide from "@/components/DeleteRide";
+import RideStatusControl from "@/components/RideStatusControl";
+import PassengerWindowSync from "@/components/PassengerWindowSync";
+
+export default async function Dashboard() {
+  const session = await getServerSession(authOptions);
+  const user = session?.user;
+
+  if (!user?.id) {
+    redirect("/login");
+  }
+
+  const userType = user.userType || "PASSENGER";
+  const isDriverRole = userType === "DRIVER" || userType === "BOTH";
+  const isPassengerRole = userType === "PASSENGER" || userType === "BOTH";
+
+  const now = new Date();
+
+  const myRides = isDriverRole ? await prisma.ride.findMany({
+    where: { driverId: user.id },
+    orderBy: { departure: 'asc' },
+    include: {
+      bookings: {
+        include: { 
+          user: { 
+            select: { 
+              name: true, 
+              gender: true,
+              studentVerificationStatus: true,
+            } 
+          } 
+        }
+      }
+    }
+  }) : [];
+
+  const activeDriverRide = isDriverRole ? myRides.find(r => r.status === "ACTIVE") : null;
+
+  const myBookings = isPassengerRole ? await prisma.booking.findMany({
+    where: { userId: user.id },
+    include: {
+      ride: {
+        include: { 
+          driver: { 
+            select: { 
+              name: true, 
+              studentVerificationStatus: true,
+              driverVerificationStatus: true 
+            } 
+          } 
+        }
+      }
+    },
+    orderBy: { ride: { departure: 'asc' } }
+  }) : [];
+
+  const upcomingBookings = myBookings.filter(b => 
+    (new Date(b.ride.departure) >= now || b.ride.status === "ACTIVE") && 
+    b.ride.status !== "COMPLETED" && 
+    b.ride.status !== "CANCELLED" && 
+    b.status !== "CANCELLED" && 
+    b.status !== "REJECTED"
+  );
+  
+  const pastOrCancelledBookings = myBookings.filter(b => 
+    (new Date(b.ride.departure) < now && b.ride.status !== "ACTIVE") || 
+    b.ride.status === "COMPLETED" || 
+    b.ride.status === "CANCELLED" || 
+    b.status === "CANCELLED" || 
+    b.status === "REJECTED"
+  );
+
+  const upcomingPublishedRides = myRides.filter(r => (new Date(r.departure) >= now || r.status === "ACTIVE") && r.status !== "COMPLETED" && r.status !== "CANCELLED");
+  const pastPublishedRides = myRides.filter(r => new Date(r.departure) < now || r.status === "COMPLETED" || r.status === "CANCELLED");
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b pb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isDriverRole && !isPassengerRole ? "Driver Dashboard" : isPassengerRole && !isDriverRole ? "Passenger Dashboard" : "Dashboard"}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Welcome back, <span className="font-semibold text-foreground">{user?.name}</span> ({userType === "DRIVER" ? "Driver Account" : userType === "PASSENGER" ? "Passenger / Student Account" : "Driver & Passenger Account"}).
+          </p>
+        </div>
+        {isDriverRole && (
+          activeDriverRide ? (
+            <div className="text-right">
+              <span className={cn(buttonVariants({ variant: "outline" }), "opacity-60 cursor-not-allowed pointer-events-none")}>
+                + Publish a Ride
+              </span>
+              <p className="text-[11px] text-destructive mt-1 font-medium">Complete current ride first</p>
+            </div>
+          ) : (
+            <Link href="/rides/create" className={cn(buttonVariants({ variant: "default" }))}>
+              + Publish a Ride
+            </Link>
+          )
+        )}
+      </div>
+      
+      {isPassengerRole && (
+        <div className="bg-card border text-card-foreground shadow-sm rounded-xl p-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <span>🔍 Find a Ride</span>
+          </h2>
+          <SearchForm />
+        </div>
+      )}
+
+      {/* PASSENGER SECTION */}
+      {isPassengerRole && (
+      <section className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <span>Upcoming &amp; Active Bookings</span>
+            <Badge variant="secondary" className="text-xs">{upcomingBookings.length}</Badge>
+          </h3>
+
+          {upcomingBookings.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                You have no upcoming or active ride bookings. Use the search form above to find and book a seat!
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {upcomingBookings.map((booking) => (
+                <Card key={booking.id} className="flex flex-col border shadow-sm hover:shadow-md transition-shadow">
+                  <PassengerWindowSync rideId={booking.ride.id} currentStatus={booking.ride.status} />
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <CardTitle className="text-base hover:text-primary transition-colors">
+                        <Link href={`/rides/${booking.ride.id}`}>
+                          {booking.ride.origin} → {booking.ride.destination}
+                        </Link>
+                      </CardTitle>
+                      <Badge variant={booking.status === "CONFIRMED" ? "default" : booking.status === "PENDING" ? "outline" : "secondary"}>
+                        {booking.status}
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      🕒 {new Date(booking.ride.departure).toLocaleString(undefined, { 
+                        weekday: 'short', month: 'short', day: 'numeric', 
+                        hour: 'numeric', minute: '2-digit' 
+                      })}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col justify-between space-y-4">
+                    <div className="text-sm space-y-2 bg-muted/30 p-3 rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Driver:</span>
+                        <span className="font-semibold text-foreground flex items-center gap-1">
+                          {booking.ride.driver.name}
+                          {booking.ride.driver.driverVerificationStatus === "APPROVED" && (
+                            <span title="Verified Driver" className="text-blue-600 text-xs">✓</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Fare:</span>
+                        <span className="font-semibold text-primary">
+                          {booking.fare > 0 ? `₹${booking.fare.toFixed(2)}` : "₹0.00"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t">
+                        <span className="text-xs font-medium text-muted-foreground">Seat Sharing Preference:</span>
+                        <Badge variant="outline" className="text-[10px] bg-background">
+                          {booking.preferredPassengerGender === "FEMALE" ? "♀ Prefer Female" : "○ No Preference"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <Link 
+                        href={`/rides/${booking.ride.id}`}
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1 text-xs")}
+                      >
+                        View Ride →
+                      </Link>
+                      <CancelBooking bookingId={booking.id} status={booking.status} />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {pastOrCancelledBookings.length > 0 && (
+          <div className="pt-4">
+            <h3 className="text-base font-semibold mb-3 text-muted-foreground flex items-center gap-2">
+              <span>Past &amp; Cancelled Bookings</span>
+              <Badge variant="outline" className="text-xs">{pastOrCancelledBookings.length}</Badge>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pastOrCancelledBookings.map((booking) => (
+                <Card key={booking.id} className="opacity-75 flex flex-col border text-sm">
+                  <CardHeader className="p-4 pb-2">
+                    <div className="flex justify-between items-center gap-2">
+                      <CardTitle className="text-sm">
+                        <Link href={`/rides/${booking.ride.id}`} className="hover:underline">
+                          {booking.ride.origin} → {booking.ride.destination}
+                        </Link>
+                      </CardTitle>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {booking.status}
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-[11px]">
+                      {new Date(booking.ride.departure).toLocaleDateString()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-1 flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">Driver: {booking.ride.driver.name}</span>
+                    {booking.ride.status === "COMPLETED" ? (
+                      <Link href={`/rides/${booking.ride.id}`} className="text-amber-600 dark:text-amber-400 font-semibold hover:underline">
+                        ★ Rate Driver →
+                      </Link>
+                    ) : (
+                      <span className="font-medium">₹{booking.fare.toFixed(2)}</span>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+      )}
+
+      {/* DRIVER SECTION */}
+      {isDriverRole && (
+      <section className="space-y-6 pt-4">
+        {activeDriverRide && (
+          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+            <div>
+              <h3 className="font-bold flex items-center gap-2 text-base">
+                <span>🚗 Active Ride in Progress</span>
+                <Badge className="bg-amber-600 hover:bg-amber-700 text-white text-[10px]">ACTIVE</Badge>
+              </h3>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                {activeDriverRide.origin} → {activeDriverRide.destination}. Complete or cancel your current ride before publishing another.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <RideStatusControl rideId={activeDriverRide.id} status={activeDriverRide.status} />
+              <Link href={`/rides/${activeDriverRide.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs")}>
+                View Ride →
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <span>Upcoming &amp; Active Published Rides</span>
+            <Badge variant="secondary" className="text-xs">{upcomingPublishedRides.length}</Badge>
+          </h3>
+
+          {upcomingPublishedRides.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                You haven&apos;t published any upcoming rides yet. Click &quot;+ Publish a Ride&quot; to share your route!
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {upcomingPublishedRides.map((ride) => (
+                <Card key={ride.id} className="flex flex-col border shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <CardTitle className="text-base hover:text-primary transition-colors">
+                        <Link href={`/rides/${ride.id}`}>
+                          {ride.origin} → {ride.destination}
+                        </Link>
+                      </CardTitle>
+                      <Badge variant={ride.status === "ACTIVE" ? "default" : "outline"} className={ride.status === "ACTIVE" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}>
+                        {ride.status}
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      🕒 {new Date(ride.departure).toLocaleString(undefined, { 
+                        weekday: 'short', month: 'short', day: 'numeric', 
+                        hour: 'numeric', minute: '2-digit' 
+                      })}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col justify-between space-y-4">
+                    {(() => {
+                      const confirmedFares = ride.bookings
+                        .filter(b => b.status === "CONFIRMED")
+                        .reduce((sum, b) => sum + (b.fare ?? 0), 0);
+                      return (
+                        <div className="flex justify-between text-xs bg-muted/40 p-2.5 rounded-lg border">
+                          <span><span className="font-semibold text-foreground text-sm">{ride.seats}</span> seats available</span>
+                          <span className="text-right">
+                            <span className="block text-[10px] text-muted-foreground">Confirmed Earnings</span>
+                            <span className="font-semibold text-emerald-600 text-sm">₹{confirmedFares.toFixed(2)}</span>
+                          </span>
+                        </div>
+                      );
+                    })()}
+                    
+                    <div className="bg-muted/50 p-3 rounded-md space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Passenger Bookings ({ride.bookings.length})
+                      </p>
+                      {ride.bookings.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No passenger requests yet.</p>
+                      ) : (
+                        <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {ride.bookings.map((booking) => (
+                            <li key={booking.id} className="text-xs p-2 rounded bg-background border space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-foreground">{booking.user.name}</span>
+                                <Badge 
+                                  variant={booking.status === "CONFIRMED" ? "default" : booking.status === "PENDING" ? "outline" : "secondary"} 
+                                  className="text-[9px] px-1.5 py-0"
+                                >
+                                  {booking.status}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                <span>Prefers: {booking.preferredPassengerGender === "FEMALE" ? "♀ Female Co-passengers" : "○ No Preference"}</span>
+                                <ManageBooking bookingId={booking.id} status={booking.status} />
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 pt-2 border-t flex-wrap">
+                      <RideStatusControl rideId={ride.id} status={ride.status} />
+                      <Link 
+                        href={`/rides/${ride.id}`}
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1 text-xs text-center")}
+                      >
+                        Manage Ride →
+                      </Link>
+                      <DeleteRide rideId={ride.id} />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {pastPublishedRides.length > 0 && (
+          <div className="pt-4">
+            <h3 className="text-base font-semibold mb-3 text-muted-foreground flex items-center gap-2">
+              <span>Past Published Rides</span>
+              <Badge variant="outline" className="text-xs">{pastPublishedRides.length}</Badge>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pastPublishedRides.map((ride) => (
+                <Card key={ride.id} className="opacity-75 flex flex-col border text-sm">
+                  <CardHeader className="p-4 pb-2">
+                    <CardTitle className="text-sm">
+                      <Link href={`/rides/${ride.id}`} className="hover:underline">
+                        {ride.origin} → {ride.destination}
+                      </Link>
+                    </CardTitle>
+                    <CardDescription className="text-[11px]">
+                      {new Date(ride.departure).toLocaleDateString()}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-1 flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">{ride.bookings.filter(b => b.status === "CONFIRMED").length} passenger(s)</span>
+                    {ride.status === "COMPLETED" ? (
+                      <Link href={`/rides/${ride.id}`} className="text-amber-600 dark:text-amber-400 font-semibold hover:underline text-[11px]">
+                        ★ Rate Passengers →
+                      </Link>
+                    ) : (
+                      <Link href={`/rides/${ride.id}`} className="text-primary hover:underline text-[11px]">
+                        View Details →
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+      )}
+    </div>
+  );
+}
