@@ -54,17 +54,17 @@ export default async function Profile() {
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <div className="flex justify-between items-center">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b pb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-1">
             Manage your account details, role capabilities, and verification status.
           </p>
         </div>
         <Link
           href="/profile/verification"
-          className="px-4 py-2 text-sm font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors shadow-xs"
         >
           Verification Portal →
         </Link>

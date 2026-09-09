@@ -70,19 +70,23 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-[80vh] flex-col justify-center items-center px-4 py-12">
-      <Card className="w-full max-w-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
-          <CardDescription className="text-center">
+    <div className="flex min-h-[calc(100vh-10rem)] flex-col justify-center items-center px-4 py-8 sm:py-12">
+      <Card className="w-full max-w-lg shadow-sm border">
+        <CardHeader className="space-y-1.5 text-center pb-4">
+          <CardTitle className="text-2xl font-bold tracking-tight">Create an account</CardTitle>
+          <CardDescription>
             Enter your details to register for Tpool
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <div className="text-sm text-red-500 font-medium text-center bg-red-50 dark:bg-red-950/40 p-2.5 rounded-md border border-red-200 dark:border-red-900">{error}</div>}
+            {error && (
+              <div className="text-xs sm:text-sm text-destructive font-medium text-center bg-destructive/10 border border-destructive/20 p-2.5 rounded-lg">
+                {error}
+              </div>
+            )}
             
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="name">Full Name *</Label>
               <Input 
                 id="name" 
@@ -95,13 +99,13 @@ export default function Register() {
             </div>
 
             {/* Role Selection */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-sm font-semibold">I want to use TPool as *</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <label 
-                  className={`flex flex-col p-3 rounded-lg border cursor-pointer transition-all ${
+                  className={`flex flex-col p-3.5 rounded-xl border cursor-pointer transition-all ${
                     userType === "PASSENGER"
-                      ? "bg-primary/5 border-primary shadow-sm ring-1 ring-primary"
+                      ? "bg-primary/5 border-primary shadow-xs ring-1 ring-primary"
                       : "bg-background border-input hover:bg-muted/50"
                   }`}
                 >
@@ -112,7 +116,7 @@ export default function Register() {
                       value="PASSENGER"
                       checked={userType === "PASSENGER"}
                       onChange={() => setUserType("PASSENGER")}
-                      className="accent-primary"
+                      className="accent-primary h-4 w-4"
                     />
                     <span>Passenger / Student</span>
                   </div>
@@ -125,9 +129,9 @@ export default function Register() {
                 </label>
 
                 <label 
-                  className={`flex flex-col p-3 rounded-lg border cursor-pointer transition-all ${
+                  className={`flex flex-col p-3.5 rounded-xl border cursor-pointer transition-all ${
                     userType === "DRIVER"
-                      ? "bg-primary/5 border-primary shadow-sm ring-1 ring-primary"
+                      ? "bg-primary/5 border-primary shadow-xs ring-1 ring-primary"
                       : "bg-background border-input hover:bg-muted/50"
                   }`}
                 >
@@ -138,7 +142,7 @@ export default function Register() {
                       value="DRIVER"
                       checked={userType === "DRIVER"}
                       onChange={() => setUserType("DRIVER")}
-                      className="accent-primary"
+                      className="accent-primary h-4 w-4"
                     />
                     <span>Driver</span>
                   </div>
@@ -152,22 +156,22 @@ export default function Register() {
               </div>
             </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gender</Label>
-                <select
-                  id="gender"
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value as "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY")}
-                  className="w-full h-10 px-3 text-sm rounded-md border bg-background"
-                >
-                  <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
-                  <option value="FEMALE">Female</option>
-                  <option value="MALE">Male</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="gender">Gender</Label>
+              <select
+                id="gender"
+                value={gender}
+                onChange={(e) => setGender(e.target.value as "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY")}
+                className="w-full h-10 px-3 text-sm rounded-lg border bg-background"
+              >
+                <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+                <option value="FEMALE">Female</option>
+                <option value="MALE">Male</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email *</Label>
               <Input 
                 id="email" 
@@ -179,7 +183,7 @@ export default function Register() {
               />
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password *</Label>
               <Input 
                 id="password" 
@@ -191,7 +195,7 @@ export default function Register() {
             </div>
 
             {userType === "PASSENGER" && (
-              <div className="pt-3 border-t space-y-3">
+              <div className="pt-4 border-t space-y-3">
                 <div>
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     🛡️ Safety &amp; Emergency Contact
@@ -201,7 +205,7 @@ export default function Register() {
                   </p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="emergencyContactName" className="text-xs font-medium">Emergency Contact Name</Label>
                   <Input
                     id="emergencyContactName"
@@ -213,7 +217,7 @@ export default function Register() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="emergencyContactEmail" className="text-xs font-medium">Emergency Contact Email</Label>
                     <Input
                       id="emergencyContactEmail"
@@ -223,7 +227,7 @@ export default function Register() {
                       onChange={(e) => setEmergencyContactEmail(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label htmlFor="emergencyContactPhone" className="text-xs font-medium">Emergency Contact Phone</Label>
                     <Input
                       id="emergencyContactPhone"
@@ -237,15 +241,15 @@ export default function Register() {
               </div>
             )}
             
-            <Button type="submit" className="w-full pt-2 mt-4" disabled={isLoading}>
+            <Button type="submit" size="lg" className="w-full mt-4 font-semibold" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Sign Up"}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
+        <CardFooter className="flex justify-center border-t py-4">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline font-medium">
+            <Link href="/login" className="text-primary hover:underline font-semibold">
               Sign in
             </Link>
           </p>

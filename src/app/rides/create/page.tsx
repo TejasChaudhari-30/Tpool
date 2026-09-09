@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import RouteMap, { RouteInfo } from "@/components/RouteMap";
 import { LocationInput, LocationSuggestion } from "@/components/LocationInput";
 import { calculateFare } from "@/lib/fareCalculator";
+import BackButton from "@/components/BackButton";
 
 const SEAT_OPTIONS = [1, 4, 6];
 
@@ -98,6 +99,10 @@ export default function CreateRide() {
           price: calculatedPrice,
           distance: routeInfo?.distance,
           duration: routeInfo?.duration,
+          originLat: originLoc?.lat,
+          originLon: originLoc?.lon,
+          destLat: destLoc?.lat,
+          destLon: destLoc?.lon,
         }),
       });
 
@@ -120,20 +125,25 @@ export default function CreateRide() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Publish a Ride</CardTitle>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <BackButton fallbackHref="/dashboard" label="Back to Dashboard" />
+      <Card className="shadow-xs border">
+        <CardHeader className="pb-4 border-b">
+          <CardTitle className="text-2xl font-bold tracking-tight">Publish a Ride</CardTitle>
           <CardDescription>
             Offer a seat to other students travelling your route.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <div className="text-sm text-destructive font-medium">{error}</div>}
+        <CardContent className="pt-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="text-xs sm:text-sm text-destructive font-medium bg-destructive/10 border border-destructive/20 p-2.5 rounded-lg">
+                {error}
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="origin">Origin (Starting Location)</Label>
                 <LocationInput
                   id="origin"
@@ -145,7 +155,7 @@ export default function CreateRide() {
                 />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="destination">Destination</Label>
                 <LocationInput
                   id="destination"
@@ -158,9 +168,9 @@ export default function CreateRide() {
               </div>
             </div>
 
-            <div className="rounded-lg overflow-hidden border bg-muted/30">
-              <div className="p-4 border-b bg-card flex justify-between items-center">
-                <h3 className="font-semibold">Route Preview</h3>
+            <div className="rounded-xl overflow-hidden border bg-muted/30">
+              <div className="p-3 px-4 border-b bg-card flex justify-between items-center">
+                <h3 className="font-semibold text-sm">Route Preview</h3>
                 {routeInfo && (
                   <div className="text-xs text-muted-foreground font-medium flex gap-4">
                     <span>{(routeInfo.distance / 1000).toFixed(1)} km</span>
@@ -168,7 +178,7 @@ export default function CreateRide() {
                   </div>
                 )}
               </div>
-              <div className="p-4">
+              <div className="p-3 h-56 sm:h-64">
                 {(formData.origin.length > 2 && formData.destination.length > 2) ? (
                   <RouteMap 
                     origin={originLoc ?? formData.origin} 
@@ -176,14 +186,14 @@ export default function CreateRide() {
                     onRouteCalculated={handleRouteCalculated} 
                   />
                 ) : (
-                  <div className="h-64 w-full flex items-center justify-center text-muted-foreground text-sm border rounded-lg bg-muted">
+                  <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs sm:text-sm border rounded-lg bg-muted/50">
                     Enter an origin and destination to preview the route
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="departure">Departure Date &amp; Time</Label>
               <Input 
                 id="departure" 
@@ -195,7 +205,7 @@ export default function CreateRide() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="vehicleName">Car Name</Label>
                 <Input
                   id="vehicleName"
@@ -206,7 +216,7 @@ export default function CreateRide() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Available Seats</Label>
                 <div className="flex gap-3">
                   {SEAT_OPTIONS.map((n) => (
@@ -214,20 +224,20 @@ export default function CreateRide() {
                       key={n}
                       type="button"
                       onClick={() => setFormData((prev) => ({ ...prev, seats: n }))}
-                      className={`flex-1 py-2 rounded-md border text-sm font-semibold transition-colors ${
+                      className={`flex-1 h-10 rounded-lg border text-sm font-semibold transition-colors ${
                         formData.seats === n
-                          ? "bg-primary text-primary-foreground border-primary"
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
                           : "bg-background text-foreground border-input hover:bg-muted"
                       }`}
                     >
-                      {n}
+                      {n} {n === 1 ? "seat" : "seats"}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" size="lg" className="w-full mt-4 font-semibold" disabled={isLoading}>
               {isLoading ? "Publishing..." : "Publish Ride"}
             </Button>
           </form>

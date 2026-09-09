@@ -111,6 +111,10 @@ model Ride {
   distance        Float?
   duration        Int?
   status          RideStatus       @default(SCHEDULED)
+  currentLat      Float?
+  currentLon      Float?
+  isLiveSharing   Boolean          @default(false)
+  locationUpdatedAt DateTime?
   createdAt       DateTime         @default(now())
   driver          User             @relation("DriverRides", fields: [driverId], references: [id])
   bookings        Booking[]

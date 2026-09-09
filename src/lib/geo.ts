@@ -1,11 +1,31 @@
 export async function geocode(query: string) {
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
-    headers: { "User-Agent": "TpoolApp/1.0" }
-  });
-  const data = await res.json();
-  if (data && data.length > 0) {
-    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  if (!query || query.trim().length < 2) return null;
+  const trimmed = query.trim();
+
+  try {
+    // Try Photon API first (same engine and location bias used by LocationInput component)
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(trimmed)}&lat=18.72&lon=73.68&limit=1`);
+    const data = await res.json();
+    if (data && data.features && data.features.length > 0) {
+      const coords = data.features[0].geometry.coordinates; // Photon coordinates format: [lon, lat]
+      return { lat: coords[1], lon: coords[0] };
+    }
+  } catch (e) {
+    console.error("Photon geocode failed:", e);
   }
+
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmed)}&limit=1`, {
+      headers: { "User-Agent": "TpoolApp/1.0" }
+    });
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    }
+  } catch (e) {
+    console.error("Nominatim geocode fallback failed:", e);
+  }
+
   return null;
 }
 

@@ -29,24 +29,27 @@ const getLocationCoordinates = async (): Promise<{ latitude: number | null; long
           if (!isSettled) {
             isSettled = true;
             clearTimeout(timer);
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            console.log(`[SosButton FRONTEND GPS] latitude = ${lat}, longitude = ${lon}`);
             resolve({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
+              latitude: lat,
+              longitude: lon,
             });
           }
         },
-        () => {
+        (err) => {
           if (!isSettled) {
             isSettled = true;
             clearTimeout(timer);
-            console.warn("Could not obtain current location for SOS. Continuing without location.");
+            console.warn("Could not obtain current location for SOS:", err.message);
             resolve({ latitude: null, longitude: null });
           }
         },
         {
-          enableHighAccuracy: false,
-          timeout: 15000,
-          maximumAge: 60000,
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
         }
       );
     } catch {

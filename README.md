@@ -70,3 +70,20 @@ The application is a full-stack monolithic web application built on Next.js.
 - **Immutable Reviews**: Submitted ratings cannot be edited or overwritten.
 - **Profile Ratings & Reviews**: User profiles (`/profile`) dynamically display average community rating (`★ X.X / 5`), review count, and a detailed list of received reviews.
 
+---
+
+## COMPLETED — OFFICIAL BRANDING & NAVBAR LOGO INTEGRATION
+
+### Verified User Flows & Functionality
+- **Official TPool Logo Asset**: Stored in `public/logo.png`.
+- **Responsive Header Branding**: Replaced text branding in `src/components/Navbar.tsx` with a responsive Next.js `Image` component (`alt="TPool"`, priority loaded, maintaining proper aspect ratio).
+
+---
+
+## COMPLETED — RIDE WORKFLOW, BACK NAVIGATION & CHAT STRUCTURE
+
+### Verified User Flows & Functionality
+- **Automatic Driver Request Detection**: `DriverRequestSync.tsx` polls `GET /api/bookings` every 4 seconds on the Driver Dashboard to auto-detect incoming passenger requests without full page reloads or memory leaks.
+- **Logical Back Navigation**: Integrated `BackButton.tsx` on search results, ride details, publish ride, and verification portal pages.
+- **Structured Ride Chat UI**: Re-architected `RideChat.tsx` with a participant header, driver badge indicators, scrollable conversation container with auto-scroll to latest messages, timestamped bubbles, and composer input supporting Enter key submission.
+

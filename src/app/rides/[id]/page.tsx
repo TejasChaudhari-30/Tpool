@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import BookingButton from "@/components/BookingButton";
-import RouteMap from "@/components/RouteMap";
-import RideChat from "@/components/RideChat";
+import ActiveRideLocationMap from "@/components/ActiveRideLocationMap";
+import RideChatModal from "@/components/RideChatModal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { calculateFare } from "@/lib/fareCalculator";
@@ -13,6 +13,7 @@ import RideStatusControl from "@/components/RideStatusControl";
 import PassengerWindowSync from "@/components/PassengerWindowSync";
 import RatingForm from "@/components/RatingForm";
 import DriverPassengerRatings from "@/components/DriverPassengerRatings";
+import BackButton from "@/components/BackButton";
 
 export default async function RideDetails({ 
   params,
@@ -106,6 +107,7 @@ export default async function RideDetails({
       {isPassenger && (
         <PassengerWindowSync rideId={ride.id} currentStatus={ride.status} />
       )}
+      <BackButton fallbackHref="/dashboard" label="Back" />
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
@@ -172,52 +174,63 @@ export default async function RideDetails({
             </div>
           )}
           
-          <div className="grid grid-cols-2 gap-6 bg-muted/50 p-6 rounded-lg">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Driver</h3>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <p className="text-lg font-medium">{ride.driver.name}</p>
-                {ride.driver.driverVerificationStatus === "APPROVED" && (
-                  <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 text-[10px]">
-                    ✓ Verified Driver
-                  </Badge>
-                )}
-                {ride.driver.studentVerificationStatus === "APPROVED" && (
-                  <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">
-                    ✓ Verified Student
-                  </Badge>
-                )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1 bg-muted/50 p-6 rounded-lg space-y-4 flex flex-col justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Driver</h3>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <p className="text-lg font-medium">{ride.driver.name}</p>
+                  {ride.driver.driverVerificationStatus === "APPROVED" && (
+                    <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 text-[10px]">
+                      ✓ Verified Driver
+                    </Badge>
+                  )}
+                  {ride.driver.studentVerificationStatus === "APPROVED" && (
+                    <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">
+                      ✓ Verified Student
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Available Seats</h3>
+                <p className="text-lg font-medium">{ride.seats}</p>
               </div>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Available Seats</h3>
-              <p className="text-lg font-medium">{ride.seats}</p>
-            </div>
-          </div>
 
-          <div className="rounded-lg overflow-hidden border">
-            <div className="p-4 border-b bg-card">
-              <h3 className="font-semibold">Route Map</h3>
-            </div>
-            <div className="p-4 bg-muted/30">
-              <RouteMap 
+            <div className="md:col-span-2">
+              <ActiveRideLocationMap 
+                rideId={ride.id}
                 origin={ride.origin} 
                 destination={ride.destination} 
                 passengerOrigin={searchParams?.origin}
                 passengerDestination={searchParams?.destination}
+                isActive={ride.status === "ACTIVE"}
+                canShareLiveLocation={canSeeChat}
               />
             </div>
           </div>
 
-          <div className="pt-4 border-t">
-            <BookingButton 
-               rideId={ride.id} 
-               disabledReason={disabledReason} 
-               fare={displayFare} 
-               passengerOrigin={displayOrigin} 
-               passengerDestination={displayDestination} 
-               userGender={dbUser?.gender}
-            />
+          <div className="pt-4 border-t flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <div className="flex-1">
+              <BookingButton 
+                 rideId={ride.id} 
+                 disabledReason={disabledReason} 
+                 fare={displayFare} 
+                 passengerOrigin={displayOrigin} 
+                 passengerDestination={displayDestination} 
+                 userGender={dbUser?.gender}
+              />
+            </div>
+            {canSeeChat && user?.id && (
+              <RideChatModal
+                rideId={ride.id}
+                currentUserId={user.id}
+                driverName={ride.driver.name}
+                driverId={ride.driver.id}
+                isDriver={isDriver}
+              />
+            )}
           </div>
 
           {isPassenger && ride.status === "COMPLETED" && (
@@ -243,12 +256,6 @@ export default async function RideDetails({
           )}
         </CardContent>
       </Card>
-
-      {canSeeChat && user?.id && (
-        <div className="mt-8">
-          <RideChat rideId={ride.id} currentUserId={user.id} />
-        </div>
-      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ export interface EmergencyNotificationPayload {
   emergencyContactEmail?: string | null;
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
+  rideId: string;
   origin: string;
   destination: string;
   driverName: string;
@@ -52,9 +53,12 @@ export async function sendEmergencyEmail(payload: EmergencyNotificationPayload):
   const smtpPass = process.env.SMTP_PASS?.trim() || process.env.SMTP_PASSWORD?.trim();
   const emailFrom = process.env.EMAIL_FROM?.trim() || process.env.SOS_FROM_EMAIL?.trim() || `"TPool Emergency Alert" <no-reply@tpool.local>`;
 
-  const locationText = (payload.latitude != null && payload.longitude != null)
-    ? `Latitude: ${payload.latitude}, Longitude: ${payload.longitude}\nGoogle Maps: https://maps.google.com/?q=${payload.latitude},${payload.longitude}`
-    : "Location unavailable";
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const trackingUrl = `${baseUrl}/rides/${payload.rideId}`;
+
+  const locationText = (payload.latitude != null && payload.longitude != null && !isNaN(payload.latitude) && !isNaN(payload.longitude))
+    ? `Latitude: ${payload.latitude}, Longitude: ${payload.longitude}\nGoogle Maps: https://maps.google.com/?q=${payload.latitude},${payload.longitude}\nLive Tracking Link: ${trackingUrl}`
+    : `Location: Unavailable\nLive Tracking Link: ${trackingUrl}`;
 
   const subject = `🚨 TPool Emergency Alert - ${payload.passengerName}`;
   const textContent = `TPool Emergency Alert
@@ -73,10 +77,10 @@ ${new Date(payload.departure).toLocaleString()}
 SOS activated:
 ${new Date(payload.alertCreatedAt).toLocaleString()}
 
-Current location:
+Current GPS Location:
 ${locationText}
 
-Please contact the passenger immediately.
+Please contact the passenger or open the Live Tracking link above immediately.
 
 This is an emergency notification from TPool.`;
 

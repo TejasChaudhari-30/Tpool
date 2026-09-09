@@ -80,3 +80,32 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ==========================================================================
+   GLOBAL STACKING & OVERLAY LAYERING (LEAFLET MAP & MODAL STANDARDS)
+   ========================================================================== */
+
+/* 
+ * 1. Scope Leaflet Map Container & Controls inside local stacking context.
+ *    Leaflet's internal controls (.leaflet-top, .leaflet-bottom) use z-index: 1000.
+ *    Using 'isolation: isolate' and 'z-index: 0 !important' ensures map controls,
+ *    panes, markers, popups, and tiles never escape the map container box or bleed
+ *    through fixed modal backdrops and dialog overlays.
+ */
+.leaflet-container {
+  isolation: isolate;
+  z-index: 0 !important;
+  position: relative;
+}
+
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control {
+  z-index: 10 !important;
+}
+
+.leaflet-popup-pane {
+  z-index: 20 !important;
+}
+

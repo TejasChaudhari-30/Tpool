@@ -134,3 +134,47 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
+
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get count and latest booking timestamp for rides published by this driver
+    const driverRides = await prisma.ride.findMany({
+      where: { driverId: userId, status: { in: ["SCHEDULED", "ACTIVE"] } },
+      select: {
+        id: true,
+        bookings: {
+          select: { id: true, status: true, createdAt: true }
+        }
+      }
+    });
+
+    let totalCount = 0;
+    let latestTime = 0;
+
+    for (const r of driverRides) {
+      totalCount += r.bookings.length;
+      for (const b of r.bookings) {
+        const t = new Date(b.createdAt).getTime();
+        if (t > latestTime) {
+          latestTime = t;
+        }
+      }
+    }
+
+    return NextResponse.json({
+      count: totalCount,
+      latestBookingTime: latestTime,
+      ridesCount: driverRides.length
+    }, { status: 200 });
+  } catch (error) {
+    console.error("Failed to fetch driver bookings count:", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+  }
+}

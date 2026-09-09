@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateFare } from "@/lib/fareCalculator";
+import { geocode } from "@/lib/geo";
 
 export async function POST(req: Request) {
   try {
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { origin, destination, departure, seats, price, vehicleName, distance, duration } = body;
+    const { origin, destination, departure, seats, price, vehicleName, distance, duration, originLat, originLon, destLat, destLon } = body;
 
     // Validation
     if (!origin || !destination || !departure || !seats) {
@@ -62,11 +63,36 @@ export async function POST(req: Request) {
       parsedPrice = computed.passengerTotal;
     }
 
+    let finalOriginLat = originLat !== undefined && originLat !== null ? parseFloat(originLat) : null;
+    let finalOriginLon = originLon !== undefined && originLon !== null ? parseFloat(originLon) : null;
+    let finalDestLat = destLat !== undefined && destLat !== null ? parseFloat(destLat) : null;
+    let finalDestLon = destLon !== undefined && destLon !== null ? parseFloat(destLon) : null;
+
+    if (finalOriginLat === null || finalOriginLon === null || isNaN(finalOriginLat) || isNaN(finalOriginLon)) {
+      const g = await geocode(origin);
+      if (g) {
+        finalOriginLat = g.lat;
+        finalOriginLon = g.lon;
+      }
+    }
+
+    if (finalDestLat === null || finalDestLon === null || isNaN(finalDestLat) || isNaN(finalDestLon)) {
+      const g = await geocode(destination);
+      if (g) {
+        finalDestLat = g.lat;
+        finalDestLon = g.lon;
+      }
+    }
+
     const ride = await prisma.ride.create({
       data: {
         driverId: session.user.id,
         origin,
+        originLat: finalOriginLat,
+        originLon: finalOriginLon,
         destination,
+        destLat: finalDestLat,
+        destLon: finalDestLon,
         departure: departureDate,
         seats: parsedSeats,
         price: parsedPrice,

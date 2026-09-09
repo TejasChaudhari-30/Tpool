@@ -36,6 +36,7 @@ export interface RouteMapClientProps {
   destination: string | MapLocation;
   passengerOrigin?: string | MapLocation;
   passengerDestination?: string | MapLocation;
+  liveLocation?: { lat: number; lon: number } | null;
   onRouteCalculated?: (info: RouteInfo | null) => void;
 }
 
@@ -57,11 +58,21 @@ const redIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+const goldIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 // Helper component to auto-fit map bounds
 function FitBounds({ start, end, routePositions }: { start: Location; end: Location; routePositions: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
+    map.invalidateSize();
     if (routePositions.length > 0) {
       map.fitBounds(routePositions, { padding: [50, 50] });
     } else {
@@ -95,6 +106,7 @@ export default function RouteMapClient({
   destination, 
   passengerOrigin,
   passengerDestination,
+  liveLocation,
   onRouteCalculated 
 }: RouteMapClientProps) {
   const [startLoc, setStartLoc] = useState<Location | null>(null);
@@ -257,14 +269,14 @@ export default function RouteMapClient({
   }, [origin, destination, passengerOrigin, passengerDestination]);
 
   if (isLoading) {
-    return <div className="h-64 w-full bg-muted flex items-center justify-center text-sm text-muted-foreground rounded-lg border">Loading map & route data...</div>;
+    return <div className="h-full min-h-[256px] w-full bg-muted flex items-center justify-center text-sm text-muted-foreground rounded-lg border">Loading map & route data...</div>;
   }
 
   const originName = typeof origin === "string" ? origin : origin?.name;
   const destName = typeof destination === "string" ? destination : destination?.name;
 
   if (error || !startLoc || !endLoc) {
-    return <div className="h-64 w-full bg-muted flex flex-col items-center justify-center text-sm text-muted-foreground rounded-lg border">
+    return <div className="h-full min-h-[256px] w-full bg-muted flex flex-col items-center justify-center text-sm text-muted-foreground rounded-lg border">
       <p>Map view unavailable for this route.</p>
       {originName && destName && (
         <p className="text-xs opacity-70">Could not find exact coordinates for &quot;{originName}&quot; or &quot;{destName}&quot;.</p>
@@ -273,12 +285,12 @@ export default function RouteMapClient({
   }
 
   return (
-    <div className="h-64 w-full rounded-lg overflow-hidden border relative">
+    <div className="h-full w-full rounded-lg overflow-hidden border relative z-0 isolate">
       <MapContainer 
         center={[(startLoc.lat + endLoc.lat) / 2, (startLoc.lon + endLoc.lon) / 2]} 
         zoom={13} 
         scrollWheelZoom={false} 
-        style={{ height: '256px', width: '100%' }}
+        style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -306,6 +318,12 @@ export default function RouteMapClient({
         {passEndLoc && (
           <Marker position={[passEndLoc.lat, passEndLoc.lon]} icon={redIcon}>
             <Popup>Your Destination: {passEndLoc.name}</Popup>
+          </Marker>
+        )}
+
+        {liveLocation && !isNaN(liveLocation.lat) && !isNaN(liveLocation.lon) && (
+          <Marker position={[liveLocation.lat, liveLocation.lon]} icon={goldIcon}>
+            <Popup>📍 Live Shared Position</Popup>
           </Marker>
         )}
 

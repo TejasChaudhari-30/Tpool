@@ -74,8 +74,8 @@ export default function RideStatusControl({ rideId, status }: RideStatusControlP
         {error && <p className="text-[10px] text-destructive">{error}</p>}
 
         {showConfirmModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 text-foreground">
-            <div className="bg-background rounded-lg border shadow-xl max-w-sm w-full p-6 space-y-4 text-left">
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 text-foreground animate-in fade-in duration-200">
+            <div className="bg-background rounded-lg border shadow-xl max-w-sm w-full p-6 space-y-4 text-left relative z-[110]">
               <div className="space-y-1">
                 <h3 className="text-lg font-bold">End this ride?</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">

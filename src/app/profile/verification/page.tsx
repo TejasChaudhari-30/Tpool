@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { VerificationUploadForm } from "./VerificationUploadForm";
+import BackButton from "@/components/BackButton";
 
 export const dynamic = "force-dynamic";
 
@@ -60,11 +61,9 @@ export default async function UserVerificationPortal() {
   const showDriverSection = user.userType === "DRIVER" || user.userType === "BOTH";
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
-      <div>
-        <Link href="/profile" className="text-xs text-muted-foreground hover:text-primary mb-2 inline-block">
-          ← Back to Profile
-        </Link>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <BackButton fallbackHref="/profile" label="Back to Profile" />
+      <div className="border-b pb-4">
         <h1 className="text-3xl font-bold tracking-tight">Identity &amp; Eligibility Verification</h1>
         <p className="text-muted-foreground mt-1">
           Verify your student status and driving credentials to earn trust badges on Tpool.

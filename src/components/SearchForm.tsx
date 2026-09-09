@@ -4,18 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
-import { LocationInput } from "@/components/LocationInput";
+import { LocationInput, LocationSuggestion } from "@/components/LocationInput";
 
 export default function SearchForm() {
   const router = useRouter();
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
+  const [originLoc, setOriginLoc] = useState<LocationSuggestion | null>(null);
+  const [destLoc, setDestLoc] = useState<LocationSuggestion | null>(null);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!origin || !destination) return;
 
-    const params = new URLSearchParams({ origin, destination });
+    const params = new URLSearchParams({ origin: origin.trim(), destination: destination.trim() });
+    if (originLoc) {
+      params.set("originLat", originLoc.lat.toString());
+      params.set("originLon", originLoc.lon.toString());
+    }
+    if (destLoc) {
+      params.set("destLat", destLoc.lat.toString());
+      params.set("destLon", destLoc.lon.toString());
+    }
     router.push(`/search?${params.toString()}`);
   };
 
@@ -25,8 +35,8 @@ export default function SearchForm() {
         <LocationInput
           placeholder="Leaving from (e.g. IIIT Pune)"
           value={origin}
-          onChange={setOrigin}
-          onSelect={(loc) => setOrigin(loc.name)}
+          onChange={(val) => { setOrigin(val); setOriginLoc(null); }}
+          onSelect={(loc) => { setOrigin(loc.name); setOriginLoc(loc); }}
           className="w-full"
         />
       </div>
@@ -34,8 +44,8 @@ export default function SearchForm() {
         <LocationInput
           placeholder="Going to (e.g. Talegaon Station)"
           value={destination}
-          onChange={setDestination}
-          onSelect={(loc) => setDestination(loc.name)}
+          onChange={(val) => { setDestination(val); setDestLoc(null); }}
+          onSelect={(loc) => { setDestination(loc.name); setDestLoc(loc); }}
           className="w-full"
         />
       </div>

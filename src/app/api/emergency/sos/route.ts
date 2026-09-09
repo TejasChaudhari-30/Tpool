@@ -79,8 +79,16 @@ export async function POST(req: Request) {
 
     const booking = ride.bookings[0];
 
-    const parsedLat = typeof latitude === "number" && !isNaN(latitude) ? latitude : null;
-    const parsedLon = typeof longitude === "number" && !isNaN(longitude) ? longitude : null;
+    let parsedLat = typeof latitude === "number" && !isNaN(latitude) && latitude >= -90 && latitude <= 90 ? latitude : null;
+    let parsedLon = typeof longitude === "number" && !isNaN(longitude) && longitude >= -180 && longitude <= 180 ? longitude : null;
+
+    // Fall back to active watchPosition() coordinates stored on active ride if payload coordinates are null
+    if ((parsedLat === null || parsedLon === null) && ride.isLiveSharing && ride.currentLat !== null && ride.currentLon !== null) {
+      parsedLat = ride.currentLat;
+      parsedLon = ride.currentLon;
+    }
+
+    console.log(`[BACKEND RECEIVED GPS] latitude = ${parsedLat}, longitude = ${parsedLon}`);
 
     // Create EmergencyAlert record
     const emergencyAlert = await prisma.emergencyAlert.create({
@@ -101,6 +109,7 @@ export async function POST(req: Request) {
       emergencyContactEmail: dbUser.emergencyContactEmail,
       emergencyContactName: dbUser.emergencyContactName,
       emergencyContactPhone: dbUser.emergencyContactPhone,
+      rideId: ride.id,
       origin: ride.origin,
       destination: ride.destination,
       driverName: ride.driver.name,
@@ -117,6 +126,7 @@ export async function POST(req: Request) {
       emergencyContactEmail: dbUser.emergencyContactEmail,
       emergencyContactName: dbUser.emergencyContactName,
       emergencyContactPhone: dbUser.emergencyContactPhone,
+      rideId: ride.id,
       origin: ride.origin,
       destination: ride.destination,
       driverName: ride.driver.name,

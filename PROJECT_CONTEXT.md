@@ -516,6 +516,11 @@ Application will run at `http://localhost:3000`.
 
 ## 29. Recent Major Updates
 
+- **Automatic Driver Ride Request Sync**: Implemented `DriverRequestSync.tsx` with lightweight 4-second polling to update driver dashboard requests without page reloads.
+- **Search Page Ride Filtering**: Enforced database-level filtering (`status: "SCHEDULED"`, `seats: { gt: 0 }`, `departure: { gt: new Date() }`) in `src/app/search/page.tsx` to automatically exclude completed, cancelled, active, and full rides.
+- **Compact Route Map Layout**: Refactored `/rides/[id]` into a 3-column card grid with `h-56 sm:h-64` map container to keep map preview compact alongside driver details.
+- **Modal Chat Container (`RideChatModal.tsx`)**: Replaced full inline ride chat on `/rides/[id]` with a compact CTA button opening a modal with structured header, message bubbles, role badges, and auto-scroll.
+- **Reusable Back Navigation (`BackButton.tsx`)**: Added `BackButton` component (`router.back()` with fallback) across Search, Ride Details, Publish Ride, and Verification portal pages.
 - **Post-Ride Ratings & Reviews**: Implemented database model, rating submission APIs, rating components, dashboard prompts, and directional profile reviews.
 - **Dashboard Heading Cleanup**: Removed `"Passenger Hub"` and `"Driver Hub"` headings and subtitles to streamline dashboard UI.
 - **Ride Lifecycle & Passenger Sync**: Implemented `SCHEDULED` → `ACTIVE` → `COMPLETED` lifecycle controls with automatic 4-second passenger window synchronization.

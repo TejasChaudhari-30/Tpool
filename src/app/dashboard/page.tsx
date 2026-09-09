@@ -14,6 +14,7 @@ import CancelBooking from "@/components/CancelBooking";
 import DeleteRide from "@/components/DeleteRide";
 import RideStatusControl from "@/components/RideStatusControl";
 import PassengerWindowSync from "@/components/PassengerWindowSync";
+import DriverRequestSync from "@/components/DriverRequestSync";
 
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
@@ -245,6 +246,7 @@ export default async function Dashboard() {
       {/* DRIVER SECTION */}
       {isDriverRole && (
       <section className="space-y-6 pt-4">
+        <DriverRequestSync />
         {activeDriverRide && (
           <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
             <div>

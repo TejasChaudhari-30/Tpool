@@ -43,18 +43,22 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-[80vh] flex-col justify-center items-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Sign in</CardTitle>
-          <CardDescription className="text-center">
+    <div className="flex min-h-[calc(100vh-10rem)] flex-col justify-center items-center px-4 py-8 sm:py-12">
+      <Card className="w-full max-w-md shadow-sm border">
+        <CardHeader className="space-y-1.5 text-center pb-4">
+          <CardTitle className="text-2xl font-bold tracking-tight">Sign in</CardTitle>
+          <CardDescription>
             Enter your email and password to access your account
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <div className="text-sm text-red-500 font-medium text-center">{error}</div>}
-            <div className="space-y-2">
+            {error && (
+              <div className="text-xs sm:text-sm text-destructive font-medium text-center bg-destructive/10 border border-destructive/20 p-2.5 rounded-lg">
+                {error}
+              </div>
+            )}
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input 
                 id="email" 
@@ -65,7 +69,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
               <Input 
                 id="password" 
@@ -75,15 +79,15 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" size="lg" className="w-full mt-2 font-semibold" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
+        <CardFooter className="flex justify-center border-t py-4">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-primary hover:underline font-medium">
+            <Link href="/register" className="text-primary hover:underline font-semibold">
               Sign up
             </Link>
           </p>
